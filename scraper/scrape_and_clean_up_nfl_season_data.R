@@ -239,15 +239,30 @@ data[ , grepl( "ret_Lg" , names(data)) ] <- sapply(data[ , grepl( "ret_Lg" , nam
 
 data[ , grepl( "Gms" , names(data)) ] <- NULL
 
-View(data)
+
+# drop features with 0 variances
+
+drops <- caret::nearZeroVar(data[numerics], names = T)
+data <- data[ , !(names(data) %in% drops)]
+
+
+# correlation
+
+
+numerics <- names(data[, sapply(data, is.numeric)])
+
+cor(data[numerics]) %>% View()
+
+corrplot::corrplot(cor(data[numerics]), 
+                   method = "number",
+                   tl.cex = 2/3, 
+                   tl.col = "black",
+                   diag = T, 
+                   cl.cex = 0.5, 
+                   number.cex = 2/3)
+
+ggsave("data/corr.png", device = 'png', plot = last_plot())
+
 
 saveRDS(data, "data/2019_data.RDS")
 
-numerics <- names(data[, sapply(data, is.numeric)])
-corrplot::corrplot(cor(data[numerics]), 
-                   method = "number",
-                   tl.cex = 0.66, 
-                   tl.col = "black",
-                   diag = T, 
-                   cl.cex = 0.75, 
-                   number.cex = 2/3)
