@@ -1,6 +1,5 @@
 library(data.table)
 library(caret)
-library(dataPreparation)
 library(xgboost)
 library(pROC)
 library(rpart)
@@ -72,6 +71,46 @@ rpart.plot(CART$finalModel,
 # what decides playing in SB
 # 1. offensive scored points > 426 AND defensive allowed rush TDs < 8
 # 1. offensive scored points > 426 AND defensive allowed rush TDs >= 8 AND defense allowed pass rating < 72
+
+
+### random forest
+
+set.seed(20202020)
+
+rf <- train(play_SB ~ . -Team,
+            method = "ranger",
+            data = train,
+            trControl = trainControl(method = "CV", number = 3, classProbs=TRUE),
+            tuneGrid = expand.grid(.mtry = c(3, 5, 7),
+                                   .splitrule = c("gini", "extratrees", "hellinger" ),
+                                   .min.node.size = seq(10, 50, 10)),
+            importance = "impurity")
+
+rf$results
+
+rf$results[rf$results$mtry == rf$bestTune$mtry & 
+             rf$results$min.node.size == rf$bestTune$min.node.size &
+             rf$results$splitrule == rf$bestTune$splitrule,,]
+
+
+pred <- predict(rf, newdata = test, type = 'prob')$played_sb
+act <- ifelse(test$play_SB == "played_sb", 1, 0)
+roc_obj <- roc(act, pred)
+auc(roc_obj) # 0.89 AUC
+
+plot(roc_obj, 
+     print.thres = "best", auc.polygon = T, print.auc = T,
+     print.auc.x = 0.25, print.auc.y = 0.25,
+     xlab = "1 - False Positive Rate", ylab = "True Positive Rate",
+     grid=c(0.1, 0.2), max.auc.polygon = T, auc.polygon.col = "lightblue")
+
+
+probs <- predict(rf, test, type = 'prob')
+threshold <- 0.25
+pred      <- factor(ifelse(probs[, "played_sb"] > threshold, "played_sb", "did_not_play_sb") )
+confusionMatrix(pred, test$play_SB)
+
+
 
 ### gbm
 
@@ -159,6 +198,8 @@ confusionMatrix(pred, test$play_SB)
 
 ### variable imporatances
 
+varimpRF <- varImp(rf)$importance
+varimpRF$feature <- rownames(varimpRF)
 
 varimpGBM <- varImp(GBM)$importance
 varimpGBM$feature <- rownames(varimpGBM)
@@ -166,8 +207,8 @@ varimpGBM$feature <- rownames(varimpGBM)
 varimpXGB <- varImp(XGB)$importance
 varimpXGB$feature <- rownames(varimpXGB)
 
-varImps <- merge(x = varimpGBM, y = varimpXGB, by = "feature")
-colnames(varImps) <- c("feature", "GBM", "XGB")
+varImps <- merge(merge(x = varimpRF, y = varimpGBM, by = "feature"), varimpXGB, "feature")
+colnames(varImps) <- c("feature", "RF", "GBM", "XGB")
 
 varImps %>% arrange(desc(GBM), desc(XGB))
 
@@ -191,7 +232,7 @@ melt(varImps) %>%
   tidytext::scale_x_reordered() +
   facet_wrap(~ variable, scales = 'free')
 
-ggsave("plots/feature_importances_non_scaled_play_SB.png", device = 'png', plot = last_plot())
+ggsave("plots/feature_importances_non_scaled_play_SB_with_RF.png", device = 'png', plot = last_plot())
 
 
 ### enhance dataset with predictions
@@ -201,13 +242,16 @@ data_w_predictions[, season := data_as_is$season]
 data_w_predictions[, season := factor(season)]
 data_w_predictions[, played_sb := data_as_is$play_SB]
 data_w_predictions[, prediction_GBM := predict(GBM, data, type = 'prob')$played_sb]
+data_w_predictions[, prediction_RF := predict(rf, data, type = 'prob')$played_sb]
 #data_w_predictions[, prediction_XGB := predict(XGB, data, type = 'prob')$played_sb]
+data_w_predictions[, avg_prediction := (prediction_GBM + prediction_RF) / 2]
+data_w_predictions <- data_w_predictions[order(-avg_prediction)]
 
-preds_making_it_to_sb_gbm <- data_w_predictions %>% arrange(desc(prediction_GBM))
+View(data_w_predictions)
 
-write_csv(preds_making_it_to_sb_gbm, "data/predictions_to_make_it_to_sb.csv")
+write_csv(data_w_predictions, "data/predictions_to_make_it_to_sb.csv")
   
-View(preds_making_it_to_sb_gbm)
+
 
 
 
@@ -231,7 +275,7 @@ data <- data.table(data)
 data[, play_SB := NULL]
 data[, season := NULL]
 
-data$win_SB <- ifelse(data$win_SB == 1, 'won_sb', 'lost/missed_sb')
+data$win_SB <- ifelse(data$win_SB == 1, 'won_sb', 'lost_missed_sb')
 data$win_SB <- factor(data$win_SB)
 
 set.seed(20202020)
@@ -242,6 +286,32 @@ test <- data[-train_index]
 
 
 trC <- trainControl(method = "CV", number = 3)
+
+
+set.seed(20202020)
+
+rf <- train(win_SB ~ . -Team,
+            method = "ranger",
+            data = train,
+            trControl = trainControl(method = "CV", number = 3, classProbs=TRUE),
+            tuneGrid = expand.grid(.mtry = c(3, 5, 7),
+                                   .splitrule = c("gini", "extratrees", "hellinger" ),
+                                   .min.node.size = seq(10, 50, 10)),
+            importance = "impurity")
+
+rf$results
+
+rf$results[rf$results$mtry == rf$bestTune$mtry & 
+             rf$results$min.node.size == rf$bestTune$min.node.size &
+             rf$results$splitrule == rf$bestTune$splitrule,,]
+
+pred <- predict(rf, newdata = test, type = 'prob')$won_sb
+act <- ifelse(test$win_SB == "won_sb", 1, 0)
+roc_obj <- roc(act, pred)
+auc(roc_obj)
+
+
+
 
 
 set.seed(20202020)
@@ -298,14 +368,17 @@ roc_obj <- roc(act, pred)
 auc(roc_obj)
 
 
+varimpRF_w <- varImp(rf)$importance
+varimpRF_w$feature <- rownames(varimpRF_w)
+
 varimpGBM_w <- varImp(GBM_w)$importance
 varimpGBM_w$feature <- rownames(varimpGBM_w)
 
 varimpXGB_w <- varImp(XGB_w)$importance
 varimpXGB_w$feature <- rownames(varimpXGB_w)
 
-varImps_w <- merge(x = varimpGBM_w, y = varimpXGB_w, by = "feature")
-colnames(varImps_w) <- c("feature", "GBM", "XGB")
+varImps_w <- merge(merge(x = varimpRF_w, y = varimpGBM_w, by = "feature"), varimpXGB_w, "feature")
+colnames(varImps_w) <- c("feature", "RF", "GBM", "XGB")
 
 varImps_w %>% arrange(desc(GBM), desc(XGB))
 
@@ -329,7 +402,7 @@ melt(varImps_w) %>%
   tidytext::scale_x_reordered() +
   facet_wrap(~ variable, scales = 'free')
 
-ggsave("plots/feature_importances_non_scaled_win_SB.png", device = 'png', plot = last_plot())
+ggsave("plots/feature_importances_non_scaled_win_SB_with_RF.png", device = 'png', plot = last_plot())
 # Saving 11.7 x 5.33 in image
 
 
@@ -340,10 +413,12 @@ data_w_predictions_w[, season := data_as_is$season]
 data_w_predictions_w[, season := factor(season)]
 data_w_predictions_w[, won_sb := data_as_is$win_SB]
 data_w_predictions_w[, prediction_GBM := predict(GBM_w, data, type = 'prob')$won_sb]
+data_w_predictions_w[, prediction_RF := predict(rf, data, type = 'prob')$won_sb]
 #data_w_predictions[, prediction_XGB := predict(XGB, data, type = 'prob')$played_sb]
+data_w_predictions_w[, avg_prediction := (prediction_GBM + prediction_RF) / 2]
+data_w_predictions_w <- data_w_predictions_w[order(-avg_prediction)]
 
-preds_winning_sb_gbm <- data_w_predictions_w %>% arrange(desc(prediction_GBM))
+View(data_w_predictions_w)
 
-write_csv(preds_winning_sb_gbm, "data/predictions_to_win_the_sb.csv")
+write_csv(data_w_predictions_w, "data/predictions_to_win_the_sb.csv")
 
-View(preds_winning_sb_gbm)
