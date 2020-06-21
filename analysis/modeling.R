@@ -330,6 +330,7 @@ melt(varImps_w) %>%
   facet_wrap(~ variable, scales = 'free')
 
 ggsave("plots/feature_importances_non_scaled_win_SB.png", device = 'png', plot = last_plot())
+# Saving 11.7 x 5.33 in image
 
 
 ### enhance dataset with predictions
