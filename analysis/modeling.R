@@ -6,6 +6,7 @@ library(rpart)
 library(rpart.plot)
 library(gbm)
 library(tidyverse)
+library(dataPreparation)
 
 data <- readRDS("data/labeled_stats.RDS")
 data_as_is <- readRDS("data/labeled_stats.RDS")
@@ -34,9 +35,9 @@ train_index <- createDataPartition(data[["play_SB"]], p = 0.75, list = F)
 train <- data[train_index,]
 test <- data[-train_index]
 
-# scale features
+# scale features NO NEED FOR TREE BASED METHODS
 
-#numerics <- names(select_if(train, is.numeric))
+numerics <- names(select_if(train, is.numeric))
 
 #scales <- build_scales(dataSet = train, cols = numerics, verbose = F)
 #fastScale(dataSet = train, scales = scales, verbose = F)
@@ -54,8 +55,9 @@ set.seed(20202020)
 
 CART <- train(play_SB ~ . -Team,
               method = "rpart",
-              data = data,
-              tuneGrid = data.frame(cp = c(0.02)), # 0.04
+              data = train,
+              preProcess = c("center", "scale"),
+              tuneGrid = data.frame(cp = c(0.01)), # 0.04
               trControl = trC)
 
 rpart.plot(CART$finalModel,
@@ -67,6 +69,11 @@ rpart.plot(CART$finalModel,
            under = F,
            tweak = 4/3, 
            cex = 2/3)
+
+
+CART$preProcess$mean['off_scoring_points']
+CART$preProcess$std['off_scoring_points']
+1.3*CART$preProcess$std['off_scoring_points'] + CART$preProcess$mean['off_scoring_points']
 
 # what decides playing in SB
 # 1. offensive scored points > 426 AND defensive allowed rush TDs < 8
@@ -422,3 +429,70 @@ View(data_w_predictions_w)
 
 write_csv(data_w_predictions_w, "data/predictions_to_win_the_sb.csv")
 
+
+
+
+### PREDICT ON 2020 ###
+
+new_data <- readRDS("data/scraped_stats_2020.RDS")
+
+new_data <- data.frame(new_data)
+new_data <- new_data[, which(colMeans(!is.na(new_data)) > 0.5)]
+new_data <- data.table(new_data)
+
+new_data[, season := NULL]
+
+names(data)
+names(new_data)
+
+keep_cols <- which(colnames(new_data) %in% names(data))
+new_data <- new_data %>% select(keep_cols)
+
+
+new_data[, .N, by = Team]
+
+new_data[(Team == 'Los Angeles RamsLA Rams') | 
+       (Team == 'St. Louis RamsSt. Louis') |
+       (Team == 'Los Angeles RamsLos Angeles'), Team := 'Rams']
+
+new_data[(Team == 'Los Angeles RaidersLA Raiders') | 
+       (Team == 'Oakland RaidersOakland') , Team := 'Raiders']
+
+new_data[(Team == 'San Diego ChargersSan Diego') | 
+       (Team == 'Los Angeles ChargersLA Chargers') , Team := 'Chargers']
+
+new_data[(Team == 'Houston OilersHouston') | 
+       (Team == 'Tennessee TitansTennessee') |
+       (Team == 'Tennessee OilersTennessee'), Team := 'Titans']
+
+teams <- new_data[, .N, by = Team]
+teams[, Name := c("Cardinals", "Falcons", "Ravens", "Bills", "Panthers", "Bears", "Bengals", "Browns", 
+                  "Cowboys", "Broncos", "Lions", "Packers", "Texans", "Colts", "Jaguars", "Chiefs", "Raiders",
+                  "Chargers", "Rams", "Dolphins", "Vikings", "Patriots", "Saints", "Giants", "Jets", 
+                  "Eagles", "Steelers", "49ers", "Seahawks", "Buccanneers", "Titans", "Redskins")]
+
+new_data[, Team := plyr::mapvalues(Team, teams$Team, teams$Name)]
+
+
+data_w_predictions <- data.table()
+data_w_predictions[, team := new_data$Team]
+data_w_predictions[, prediction_GBM := predict(GBM, new_data, type = 'prob')$played_sb]
+data_w_predictions[, prediction_RF := predict(rf, new_data, type = 'prob')$played_sb]
+data_w_predictions[, prediction_XGB := predict(XGB, new_data, type = 'prob')$played_sb]
+data_w_predictions[, avg_prediction := (prediction_GBM + prediction_RF + prediction_XGB) / 3]
+data_w_predictions <- data_w_predictions[order(-avg_prediction)]
+
+View(data_w_predictions)
+
+
+
+
+data_w_predictions <- data.table()
+data_w_predictions[, team := new_data$Team]
+data_w_predictions[, prediction_GBM := predict(GBM_w, new_data, type = 'prob')$won_sb]
+data_w_predictions[, prediction_RF := predict(rf, new_data, type = 'prob')$won_sb]
+data_w_predictions[, prediction_XGB := predict(XGB_w, new_data, type = 'prob')$won_sb]
+data_w_predictions[, avg_prediction := (prediction_GBM + prediction_RF + prediction_XGB) / 3]
+data_w_predictions <- data_w_predictions[order(-avg_prediction)]
+
+View(data_w_predictions)
