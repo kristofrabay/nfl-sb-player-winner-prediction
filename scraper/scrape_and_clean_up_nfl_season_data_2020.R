@@ -259,7 +259,7 @@ data <- rbindlist(pblapply(years, scrape_by_year), fill = T)
 View(data)
 
 
-naniar::vis_miss(data)
+# naniar::vis_miss(data)
 
 # drop features with 0 variances
 
@@ -269,18 +269,18 @@ naniar::vis_miss(data)
 
 # correlation
 
-numerics <- which(sapply(data, is.numeric))
+# numerics <- which(sapply(data, is.numeric))
+# 
+# cor(data[ , numerics, with=FALSE]) %>% View()
+# 
+# corrplot::corrplot(cor(data[ , numerics, with = FALSE]), 
+#                    method = "number",
+#                    tl.cex = 2/3, 
+#                    tl.col = "black",
+#                    diag = T, 
+#                    cl.cex = 0.5, 
+#                    number.cex = 2/3)
 
-cor(data[ , numerics, with=FALSE]) %>% View()
 
-corrplot::corrplot(cor(data[ , numerics, with = FALSE]), 
-                   method = "number",
-                   tl.cex = 2/3, 
-                   tl.col = "black",
-                   diag = T, 
-                   cl.cex = 0.5, 
-                   number.cex = 2/3)
-
-
-saveRDS(data, "data/scraped_stats_2020.RDS")
+saveRDS(data, "data/scraped_stats_2020_11_03.RDS")
 
