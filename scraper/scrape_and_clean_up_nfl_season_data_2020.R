@@ -32,7 +32,6 @@ scrape_by_year <- function(year) {
   for (link in linklist) {
     
     if (link %like% "cat=P&group=O") {
-      
       print('passing offense')
       
       po <- read_html(link) %>% html_table()
@@ -247,7 +246,7 @@ scrape_by_year <- function(year) {
   
   data[ , grepl( "Gms" , names(data)) ] <- NULL
   
-  data <- add_column(data, season = year, .after = "Team")
+  data <- tibble::add_column(data, season = year, .after = "Team")
   
   return(data)
   
@@ -282,5 +281,6 @@ View(data)
 #                    number.cex = 2/3)
 
 
-saveRDS(data, "data/scraped_stats_2020_11_03.RDS")
+saveRDS(data, paste0("data/scraped_stats_", Sys.Date(), ".RDS"))
+
 

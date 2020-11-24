@@ -14,7 +14,7 @@ XGBW <- readRDS("analysis/XGBMODELW.RDS")
 
 ### PREDICT ON 2020 ###
 
-new_data <- readRDS("data/scraped_stats_2020_11_03.RDS")
+new_data <- readRDS(paste0("data/scraped_stats_", Sys.Date(), ".RDS"))
 
 new_data <- data.frame(new_data)
 new_data <- new_data[, which(colMeans(!is.na(new_data)) > 0.5)]
@@ -130,12 +130,13 @@ data_w_predictions[, prediction_XGB := predict(XGB, new_data, type = 'prob')$pla
 data_w_predictions[, avg_prediction := (prediction_GBM + prediction_RF + prediction_XGB) / 3]
 data_w_predictions <- data_w_predictions[order(-avg_prediction)]
 
+View(data_w_predictions)
 
 data_w_predictions$prediction_GBM <- NULL
 data_w_predictions$prediction_RF <- NULL
 data_w_predictions$prediction_XGB <- NULL
 names(data_w_predictions)[2] <- as.character(Sys.Date())
-write_csv(data_w_predictions, paste0("data/predictions-play-sb-", Sys.Date(), '.csv'))
+readr::write_csv(data_w_predictions, paste0("data/predictions-play-sb-", Sys.Date(), '.csv'))
 
 # win it
 data_w_predictions <- data.table()
@@ -146,9 +147,10 @@ data_w_predictions[, prediction_XGB := predict(XGBW, new_data, type = 'prob')$wo
 data_w_predictions[, avg_prediction := (prediction_GBM + prediction_RF + prediction_XGB) / 3]
 data_w_predictions <- data_w_predictions[order(-avg_prediction)]
 
+View(data_w_predictions)
 
 data_w_predictions$prediction_GBM <- NULL
 data_w_predictions$prediction_RF <- NULL
 data_w_predictions$prediction_XGB <- NULL
 names(data_w_predictions)[2] <- as.character(Sys.Date())
-write_csv(data_w_predictions, paste0("data/predictions-win-sb-", Sys.Date(), '.csv'))
+readr::write_csv(data_w_predictions, paste0("data/predictions-win-sb-", Sys.Date(), '.csv'))
