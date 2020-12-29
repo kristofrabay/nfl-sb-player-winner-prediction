@@ -45,7 +45,7 @@ winning$date <- as.Date(winning$date, "%Y-%m-%d")
 
 # plot
 
-playing %>% filter(team %in% c('Seahawks', 'Chiefs', 'Saints', 'Packers', 'Cardinals', 'Steelers')) %>% 
+playing %>% filter(team %in% c('Seahawks', 'Chiefs', 'Saints', 'Packers', 'Bills', 'Titans')) %>% 
   ggplot(aes(date, predictions, fill = team, color = team, shape = team)) +
   geom_line(size = 2/3) + 
   geom_point(size = 2) + 
@@ -56,7 +56,7 @@ playing %>% filter(team %in% c('Seahawks', 'Chiefs', 'Saints', 'Packers', 'Cardi
   theme(legend.position = "bottom")
 ggsave('../plots/AAA_predictions_2020_making_itA.png')
 
-playing %>% filter(!team %in% c('Seahawks', 'Chiefs', 'Saints', 'Packers', 'Cardinals', 'Steelers')) %>% 
+playing %>% filter(!team %in% c('Seahawks', 'Chiefs', 'Saints', 'Packers', 'Bills', 'Titans')) %>% 
   ggplot(aes(date, predictions, fill = team, color = team, shape = team)) +
   geom_line(size = 2/3) + 
   geom_point(size = 2) + 
@@ -68,7 +68,7 @@ playing %>% filter(!team %in% c('Seahawks', 'Chiefs', 'Saints', 'Packers', 'Card
 ggsave('../plots/AAA_predictions_2020_making_itB.png')
 
 
-winning %>% filter(team %in% c('Seahawks', 'Chiefs', 'Saints', 'Packers', 'Cardinals', 'Steelers')) %>% 
+winning %>% filter(team %in% c('Seahawks', 'Chiefs', 'Saints', 'Packers', 'Bills', 'Titans')) %>% 
   ggplot(aes(date, predictions, fill = team, color = team, shape = team)) +
   geom_line(size = 2/3) + 
   geom_point(size = 2) + 
@@ -80,7 +80,7 @@ winning %>% filter(team %in% c('Seahawks', 'Chiefs', 'Saints', 'Packers', 'Cardi
 ggsave('../plots/AAA_predictions_2020_winning_itA.png')
 
 
-winning %>% filter(!team %in% c('Seahawks', 'Chiefs', 'Saints', 'Packers', 'Cardinals', 'Steelers')) %>% 
+winning %>% filter(!team %in% c('Seahawks', 'Chiefs', 'Saints', 'Packers', 'Bills', 'Titans')) %>% 
   ggplot(aes(date, predictions, fill = team, color = team, shape = team)) +
   geom_line(size = 2/3) + 
   geom_point(size = 2) + 
