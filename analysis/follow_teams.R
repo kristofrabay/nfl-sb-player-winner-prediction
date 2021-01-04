@@ -27,10 +27,10 @@ View(winning)
 #playing_top <- playing %>% arrange(desc(mean)) %>% top_n(5)
 #winning_top <- winning %>% arrange(desc(mean)) %>% top_n(5)
 
-playing <- playing %>% filter(team %in% c('Seahawks', 'Chiefs', 'Saints', 'Packers', 'Cardinals', 'Steelers', 
+playing <- playing %>% filter(team %in% c('Seahawks', 'Chiefs', 'Saints', 'Packers', 'Steelers', 
                                'Buccanneers', 'Rams', 'Titans', 'Colts', 'Ravens', 'Bills'))
 
-winning <- winning %>% filter(team %in% c('Seahawks', 'Chiefs', 'Saints', 'Packers', 'Cardinals', 'Steelers', 
+winning <- winning %>% filter(team %in% c('Seahawks', 'Chiefs', 'Saints', 'Packers', 'Steelers', 
                                'Buccanneers', 'Rams', 'Titans', 'Colts', 'Ravens', 'Bills'))
 
 
@@ -90,3 +90,36 @@ winning %>% filter(!team %in% c('Seahawks', 'Chiefs', 'Saints', 'Packers', 'Bill
   theme_bw() +
   theme(legend.position = "bottom")
 ggsave('../plots/AAA_predictions_2020_winning_itB.png')
+
+
+### SHOW ALL TEAMS ON BARCHART
+
+
+playing %>% filter(date == '2021-01-04') %>% arrange(desc(predictions)) %>% 
+  ggplot(aes(reorder(team, -predictions), predictions)) +
+  geom_col(width = 3/4, color = 'black', fill = 'darkgreen', alpha = 2/3) +
+  geom_text(aes(label = scales::percent(predictions, accuracy = 0.01)), vjust = -0.5) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 0.28)) +
+  labs(title = 'Teams with highest probabilities of making it to the SB as of Week 17',
+       x = NULL, y = NULL) +
+  theme_bw() 
+
+
+playing %>% group_by(team) %>% dplyr::summarize(mean_prob = mean(predictions)) %>% ungroup() %>% arrange(desc(mean_prob)) %>% 
+  ggplot(aes(reorder(team, -mean_prob), mean_prob)) +
+  geom_col(width = 3/4, color = 'black', fill = 'darkgreen', alpha = 2/3) +
+  geom_text(aes(label = scales::percent(mean_prob, accuracy = 0.01)), vjust = -0.5) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 0.28)) +
+  labs(title = 'Average probabilites of last 8 weeks',
+       x = NULL, y = NULL) +
+  theme_bw() 
+
+
+playing %>% group_by(team) %>% dplyr::summarize(mean_prob = median(predictions)) %>% ungroup() %>% arrange(desc(mean_prob)) %>% 
+  ggplot(aes(reorder(team, -mean_prob), mean_prob)) +
+  geom_col(width = 3/4, color = 'black', fill = 'darkgreen', alpha = 2/3) +
+  geom_text(aes(label = scales::percent(mean_prob, accuracy = 0.01)), vjust = -0.5) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 0.28)) +
+  labs(title = 'Median probabilites of last 8 weeks',
+       x = NULL, y = NULL) +
+  theme_bw() 
